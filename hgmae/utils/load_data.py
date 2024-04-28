@@ -235,7 +235,34 @@ def load_freebase(ratio, type_num):
 
 def load_phishing(ratio, type_num):
     # TODO - Completet load func
-    pass
+    path = data_folder + "phishing/"
+
+    label = np.load(path + "labels.npy").astype("int32")
+    label = encode_onehot(label)
+    nei_f = np.load(path + "nei_f.npy", allow_pickle=True)
+    # feat_u = sp.load_npz(path + "u_feat.npz").astype("float32")
+    feat_f = sp.eye(type_num[1])
+    ufu = sp.load_npz(path + "ufu.npz")
+    ufrfu = sp.load_npz(path + "ufrfu.npz")
+    # pos = None  # TODO - pos is not used in the code
+    # train = [np.load(path + "train_" + str(i) + ".npy") for i in ratio]
+    # test = [np.load(path + "test_" + str(i) + ".npy") for i in ratio]
+    # val = [np.load(path + "val_" + str(i) + ".npy") for i in ratio]
+
+    label = th.FloatTensor(label)
+    nei_f = [th.LongTensor(i) for i in nei_f]
+    # feat_u = th.FloatTensor(preprocess_features(feat_u))
+    feat_f = th.FloatTensor(preprocess_features(feat_f))
+    ufu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufu))
+    ufrfu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufrfu))
+    # pos = sparse_mx_to_torch_sparse_tensor(pos)
+    # train = [th.LongTensor(i) for i in train]
+    # val = [th.LongTensor(i) for i in val]
+    # test = [th.LongTensor(i) for i in test]
+
+    # return [nei_f], [feat_u, feat_f], [ufu, ufrfu], pos, label, train, val, test
+
+    print(1)
 
 
 def load_data(dataset, ratio, type_num):
@@ -247,5 +274,7 @@ def load_data(dataset, ratio, type_num):
         data = load_aminer(ratio, type_num)
     elif dataset == "freebase":
         data = load_freebase(ratio, type_num)
+    elif dataset == "phishing":
+        data = load_phishing(ratio, type_num)
     g, metapaths = process_data_in_pyg(data[0])
     return data, g, metapaths

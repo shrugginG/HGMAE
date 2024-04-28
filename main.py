@@ -145,5 +145,4 @@ if __name__ == "__main__":
             sys.exit(f'No available config file for task: {args.task}')
         args = load_best_configs(args, config_file_name)
     print(args)
-
     main(args)

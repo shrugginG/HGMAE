@@ -137,3 +137,7 @@ dmypy.json
 test/
 test.ipynb
 hgmae.ipynb
+
+data/neo4j_mysql_export/
+# data/phishing/
+**/tempCodeRunnerFile.py
