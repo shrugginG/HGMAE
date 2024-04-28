@@ -20,7 +20,7 @@ def preprocess_features(features):
     """Row-normalize feature matrix and convert to tuple representation"""
     rowsum = np.array(features.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
-    r_inv[np.isinf(r_inv)] = 0.
+    r_inv[np.isinf(r_inv)] = 0.0
     r_mat_inv = sp.diags(r_inv)
     features = r_mat_inv.dot(features)
     if isinstance(features, np.ndarray):
@@ -34,7 +34,7 @@ def normalize_adj(adj):
     adj = sp.coo_matrix(adj)
     rowsum = np.array(adj.sum(1))
     d_inv_sqrt = np.power(rowsum, -0.5).flatten()
-    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
+    d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.0
     d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
     return adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
 
@@ -42,8 +42,7 @@ def normalize_adj(adj):
 def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     """Convert a scipy sparse matrix to a torch sparse tensor."""
     sparse_mx = sparse_mx.tocoo().astype(np.float32)
-    indices = th.from_numpy(
-        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
+    indices = th.from_numpy(np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
     values = th.from_numpy(sparse_mx.data)
     shape = th.Size(sparse_mx.shape)
     return th.sparse.FloatTensor(indices, values, shape)
@@ -61,9 +60,13 @@ def process_data_in_pyg(neigs):
         src_name = f"target"
         dst_name = f"dst_{mp_i}"
         relation = f"relation_{mp_i}"
-        d[(src_name, relation + "-->", dst_name)]["edge_index"] = th.LongTensor(np.vstack([src_array_concat, dst_array_concat]))
+        d[(src_name, relation + "-->", dst_name)]["edge_index"] = th.LongTensor(
+            np.vstack([src_array_concat, dst_array_concat])
+        )
         metapaths.append((src_name, relation + "-->", dst_name))
-        d[(dst_name, "<--" + relation, src_name)]["edge_index"] = th.LongTensor(np.vstack([dst_array_concat, src_array_concat]))
+        d[(dst_name, "<--" + relation, src_name)]["edge_index"] = th.LongTensor(
+            np.vstack([dst_array_concat, src_array_concat])
+        )
         metapaths.append((dst_name, "<--" + relation, src_name))
     g = HeteroData(d)
     return g, metapaths
@@ -72,7 +75,7 @@ def process_data_in_pyg(neigs):
 def load_acm(ratio, type_num):
     # The order of node types: 0 p 1 a 2 s
     path = data_folder + "acm/"
-    label = np.load(path + "labels.npy").astype('int32')
+    label = np.load(path + "labels.npy").astype("int32")
     label = encode_onehot(label)
     nei_a = np.load(path + "nei_a.npy", allow_pickle=True)
     nei_s = np.load(path + "nei_s.npy", allow_pickle=True)
@@ -98,13 +101,22 @@ def load_acm(ratio, type_num):
     train = [th.LongTensor(i) for i in train]
     val = [th.LongTensor(i) for i in val]
     test = [th.LongTensor(i) for i in test]
-    return [nei_a, nei_s], [feat_p, feat_a, feat_s], [pap, psp], pos, label, train, val, test
+    return (
+        [nei_a, nei_s],
+        [feat_p, feat_a, feat_s],
+        [pap, psp],
+        pos,
+        label,
+        train,
+        val,
+        test,
+    )
 
 
 def load_dblp(ratio, type_num):
     # The order of node types: 0 a 1 p 2 c 3 t
     path = data_folder + "dblp/"
-    label = np.load(path + "labels.npy").astype('int32')
+    label = np.load(path + "labels.npy").astype("int32")
     label = encode_onehot(label)
     nei_p = np.load(path + "nei_p.npy", allow_pickle=True)
     feat_a = sp.load_npz(path + "a_feat.npz").astype("float32")
@@ -134,7 +146,7 @@ def load_dblp(ratio, type_num):
 def load_aminer(ratio, type_num):
     # The order of node types: 0 p 1 a 2 r
     path = data_folder + "aminer/"
-    label = np.load(path + "labels.npy").astype('int32')
+    label = np.load(path + "labels.npy").astype("int32")
     label = encode_onehot(label)
     nei_a = np.load(path + "nei_a.npy", allow_pickle=True)
     nei_r = np.load(path + "nei_r.npy", allow_pickle=True)
@@ -161,13 +173,22 @@ def load_aminer(ratio, type_num):
     train = [th.LongTensor(i) for i in train]
     val = [th.LongTensor(i) for i in val]
     test = [th.LongTensor(i) for i in test]
-    return [nei_a, nei_r], [feat_p, feat_a, feat_r], [pap, prp], pos, label, train, val, test
+    return (
+        [nei_a, nei_r],
+        [feat_p, feat_a, feat_r],
+        [pap, prp],
+        pos,
+        label,
+        train,
+        val,
+        test,
+    )
 
 
 def load_freebase(ratio, type_num):
     # The order of node types: 0 m 1 d 2 a 3 w
     path = data_folder + "freebase/"
-    label = np.load(path + "labels.npy").astype('int32')
+    label = np.load(path + "labels.npy").astype("int32")
     label = encode_onehot(label)
     nei_d = np.load(path + "nei_d.npy", allow_pickle=True)
     nei_a = np.load(path + "nei_a.npy", allow_pickle=True)
@@ -200,7 +221,21 @@ def load_freebase(ratio, type_num):
     train = [th.LongTensor(i) for i in train]
     val = [th.LongTensor(i) for i in val]
     test = [th.LongTensor(i) for i in test]
-    return [nei_d, nei_a, nei_w], [feat_m, feat_d, feat_a, feat_w], [mdm, mam, mwm], pos, label, train, val, test
+    return (
+        [nei_d, nei_a, nei_w],
+        [feat_m, feat_d, feat_a, feat_w],
+        [mdm, mam, mwm],
+        pos,
+        label,
+        train,
+        val,
+        test,
+    )
+
+
+def load_phishing(ratio, type_num):
+    # TODO - Completet load func
+    pass
 
 
 def load_data(dataset, ratio, type_num):

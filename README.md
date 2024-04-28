@@ -1,27 +1,15 @@
-# HGMAE
+# Dataset
+* dblp
+  | node       | num   |
+  | ---------- | ----- |
+  | author     | 4057  |
+  | paper      | 14328 |
+  | conference | 20    |
+  | term       | 7723  |
 
-This is the official repo for the AAAI'23 paper "[Heterogeneous Graph Masked Autoencoders](https://arxiv.org/abs/2208.09957)".
-
-
-## How to Run the code
-
-```
-python main.py --dataset dblp --task classification --use_cfg 
-```
-
-Supported datasets: "dblp", "freebase", "acm", "aminer".
-
-Supported tasks: "classification", "clustering". 
-
-
-## Citing HGMAE
-
-If you find HGMAE useful, please cite our paper.
-```
-@inproceedings{HGMAE,
-  title={Heterogeneous Graph Masked Autoencoders},
-  author={Tian, Yijun and Dong, Kaiwen and Zhang, Chunhui and Zhang, Chuxu and Chawla, Nitesh V},
-  booktitle = {AAAI},
-  year={2023}
-}
-```
+* acm
+  | node       | num   |
+  | ---------- | ----- |
+  | author     | 7169  |
+  | paper      | 4019  |
+  | subject    | 60    |
