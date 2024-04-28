@@ -130,3 +130,10 @@ dmypy.json
 # custom
 .DS_Store
 .idea
+
+# vscode
+.vscode/
+
+test/
+test.ipynb
+hgmae.ipynb
