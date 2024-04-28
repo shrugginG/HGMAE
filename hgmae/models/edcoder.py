@@ -11,46 +11,42 @@ from hgmae.models.han import HAN
 
 
 class PreModel(nn.Module):
-    def __init__(
-            self,
-            args,
-            num_metapath: int,
-            focused_feature_dim: int
-    ):
+    def __init__(self, args, num_metapath: int, focused_feature_dim: int):
         super(PreModel, self).__init__()
 
         self.num_metapath = num_metapath
-        self.focused_feature_dim = focused_feature_dim
-        self.hidden_dim = args.hidden_dim
-        self.num_layers = args.num_layers
-        self.num_heads = args.num_heads
-        self.num_out_heads = args.num_out_heads
-        self.activation = args.activation
-        self.feat_drop = args.feat_drop
-        self.attn_drop = args.attn_drop
-        self.negative_slope = args.negative_slope
-        self.residual = args.residual
-        self.norm = args.norm
-        self.feat_mask_rate = args.feat_mask_rate
-        self.encoder_type = args.encoder
-        self.decoder_type = args.decoder
-        self.loss_fn = args.loss_fn
-        self.enc_dec_input_dim = self.focused_feature_dim
+        self.focused_feature_dim = focused_feature_dim  # TODO - 1902?
+        self.hidden_dim = args.hidden_dim  # 1024
+        self.num_layers = args.num_layers  # 2
+        self.num_heads = args.num_heads  # encoder heads: 4
+        self.num_out_heads = args.num_out_heads  # decoder heads: 1
+        self.activation = args.activation  # prelu
+        self.feat_drop = args.feat_drop  # 0.2
+        self.attn_drop = args.attn_drop  # 0.5
+        self.negative_slope = args.negative_slope  # 0.2
+        self.residual = args.residual  # False
+        self.norm = args.norm  # bacthnorm
+        self.feat_mask_rate = args.feat_mask_rate  # '0.5,0.005,0.8'
+        self.encoder_type = args.encoder  # han
+        self.decoder_type = args.decoder  # han
+        self.loss_fn = args.loss_fn  # sce
+        self.enc_dec_input_dim = self.focused_feature_dim  # TODO - 1902?
         assert self.hidden_dim % self.num_heads == 0
         assert self.hidden_dim % self.num_out_heads == 0
 
         # num head: encoder
+        # use multiple heads
         if self.encoder_type in ("gat", "dotgat", "han"):
-            enc_num_hidden = self.hidden_dim // self.num_heads
-            enc_nhead = self.num_heads
+            enc_num_hidden = self.hidden_dim // self.num_heads  # 256
+            enc_nhead = self.num_heads  # 4
         else:
             enc_num_hidden = self.hidden_dim
             enc_nhead = 1
 
         # num head: decoder
         if self.decoder_type in ("gat", "dotgat", "han"):
-            dec_num_hidden = self.hidden_dim // self.num_out_heads
-            dec_nhead = self.num_out_heads
+            dec_num_hidden = self.hidden_dim // self.num_out_heads  # 1024
+            dec_nhead = self.num_out_heads  # 1
         else:
             dec_num_hidden = self.hidden_dim
             dec_nhead = 1
@@ -96,6 +92,9 @@ class PreModel(nn.Module):
             concat_out=True,
         )
 
+        # SECTION - three reconstruction tasks
+
+        # NOTE - feature reconstruction
         # type-specific attribute restoration
         self.alpha_l = args.alpha_l
         self.attr_restoration_loss = self.setup_loss_fn(self.loss_fn, self.alpha_l)
@@ -104,15 +103,20 @@ class PreModel(nn.Module):
         self.encoder_to_decoder = nn.Linear(dec_in_dim, dec_in_dim, bias=False)
         self._replace_rate = args.replace_rate
         self._leave_unchanged = args.leave_unchanged
-        assert self._replace_rate + self._leave_unchanged < 1, "Replace rate + leave_unchanged must be smaller than 1"
+        assert (
+            self._replace_rate + self._leave_unchanged < 1
+        ), "Replace rate + leave_unchanged must be smaller than 1"
 
+        # NOTE - metapath reconstruction
         # mp edge recon
         self.use_mp_edge_recon = args.use_mp_edge_recon
         self.mp_edge_recon_loss_weight = args.mp_edge_recon_loss_weight
         self.mp_edge_mask_rate = args.mp_edge_mask_rate
         self.mp_edge_alpha_l = args.mp_edge_alpha_l
         self.mp_edge_recon_loss = self.setup_loss_fn(self.loss_fn, self.mp_edge_alpha_l)
-        self.encoder_to_decoder_edge_recon = nn.Linear(dec_in_dim, dec_in_dim, bias=False)
+        self.encoder_to_decoder_edge_recon = nn.Linear(
+            dec_in_dim, dec_in_dim, bias=False
+        )
 
         # mp2vec feat pred
         self.mps_embedding_dim = args.mps_embedding_dim
@@ -120,7 +124,10 @@ class PreModel(nn.Module):
         self.mp2vec_feat_pred_loss_weight = args.mp2vec_feat_pred_loss_weight
         self.mp2vec_feat_alpha_l = args.mp2vec_feat_alpha_l
         self.mp2vec_feat_drop = args.mp2vec_feat_drop
-        self.mp2vec_feat_pred_loss = self.setup_loss_fn(self.loss_fn, self.mp2vec_feat_alpha_l)
+        self.mp2vec_feat_pred_loss = self.setup_loss_fn(
+            self.loss_fn, self.mp2vec_feat_alpha_l
+        )
+        # 3 layers MLP
         self.enc_out_to_mp2vec_feat_mapping = nn.Sequential(
             nn.Linear(dec_in_dim, self.mps_embedding_dim),
             nn.PReLU(),
@@ -128,8 +135,9 @@ class PreModel(nn.Module):
             nn.Linear(self.mps_embedding_dim, self.mps_embedding_dim),
             nn.PReLU(),
             nn.Dropout(self.mp2vec_feat_drop),
-            nn.Linear(self.mps_embedding_dim, self.mps_embedding_dim)
+            nn.Linear(self.mps_embedding_dim, self.mps_embedding_dim),
         )
+        #!SECTION
 
     @property
     def output_hidden_dim(self):
@@ -140,14 +148,14 @@ class PreModel(nn.Module):
             return float(input_mask_rate)
         except ValueError:
             if "~" in input_mask_rate:  # 0.6~0.8 Uniform sample
-                mask_rate = [float(i) for i in input_mask_rate.split('~')]
+                mask_rate = [float(i) for i in input_mask_rate.split("~")]
                 assert len(mask_rate) == 2
                 if get_min:
                     return mask_rate[0]
                 else:
                     return torch.empty(1).uniform_(mask_rate[0], mask_rate[1]).item()
             elif "," in input_mask_rate:  # 0.6,-0.1,0.4 stepwise increment/decrement
-                mask_rate = [float(i) for i in input_mask_rate.split(',')]
+                mask_rate = [float(i) for i in input_mask_rate.split(",")]
                 assert len(mask_rate) == 3
                 start = mask_rate[0]
                 step = mask_rate[1]
@@ -156,7 +164,9 @@ class PreModel(nn.Module):
                     return min(start, end)
                 else:
                     cur_mask_rate = start + epoch * step
-                    if cur_mask_rate < min(start, end) or cur_mask_rate > max(start, end):
+                    if cur_mask_rate < min(start, end) or cur_mask_rate > max(
+                        start, end
+                    ):
                         return end
                     return cur_mask_rate
             else:
@@ -174,18 +184,22 @@ class PreModel(nn.Module):
     def forward(self, feats, mps, **kwargs):
         # prepare for mp2vec feat pred
         if self.use_mp2vec_feat_pred:
-            mp2vec_feat = feats[0][:, self.focused_feature_dim:]
-            origin_feat = feats[0][:, :self.focused_feature_dim]
+            mp2vec_feat = feats[0][:, self.focused_feature_dim :]
+            origin_feat = feats[0][:, : self.focused_feature_dim]
         else:
             origin_feat = feats[0]
 
         # type-specific attribute restoration
         gs = self.mps_to_gs(mps)
-        loss, feat_recon, att_mp, enc_out, mask_nodes = self.mask_attr_restoration(origin_feat, gs, kwargs.get("epoch", None))
+        loss, feat_recon, att_mp, enc_out, mask_nodes = self.mask_attr_restoration(
+            origin_feat, gs, kwargs.get("epoch", None)
+        )
 
         # mp based edge reconstruction
         if self.use_mp_edge_recon:
-            edge_recon_loss = self.mask_mp_edge_reconstruction(origin_feat, mps, kwargs.get("epoch", None))
+            edge_recon_loss = self.mask_mp_edge_reconstruction(
+                origin_feat, mps, kwargs.get("epoch", None)
+            )
             loss += self.mp_edge_recon_loss_weight * edge_recon_loss
 
         # mp2vec feat pred
@@ -193,7 +207,9 @@ class PreModel(nn.Module):
             # MLP decoder
             mp2vec_feat_pred = self.enc_out_to_mp2vec_feat_mapping(enc_out)
 
-            mp2vec_feat_pred_loss = self.mp2vec_feat_pred_loss(mp2vec_feat_pred, mp2vec_feat)
+            mp2vec_feat_pred_loss = self.mp2vec_feat_pred_loss(
+                mp2vec_feat_pred, mp2vec_feat
+            )
 
             loss += self.mp2vec_feat_pred_loss_weight * mp2vec_feat_pred_loss
 
@@ -205,16 +221,18 @@ class PreModel(nn.Module):
 
         # random masking
         num_mask_nodes = int(mask_rate * num_nodes)
-        mask_nodes = perm[: num_mask_nodes]
+        mask_nodes = perm[:num_mask_nodes]
         keep_nodes = perm[num_mask_nodes:]
 
         perm_mask = torch.randperm(num_mask_nodes, device=x.device)
         num_leave_nodes = int(self._leave_unchanged * num_mask_nodes)
         num_noise_nodes = int(self._replace_rate * num_mask_nodes)
         num_real_mask_nodes = num_mask_nodes - num_leave_nodes - num_noise_nodes
-        token_nodes = mask_nodes[perm_mask[: num_real_mask_nodes]]
+        token_nodes = mask_nodes[perm_mask[:num_real_mask_nodes]]
         noise_nodes = mask_nodes[perm_mask[-num_noise_nodes:]]
-        noise_to_be_chosen = torch.randperm(num_nodes, device=x.device)[:num_noise_nodes]
+        noise_to_be_chosen = torch.randperm(num_nodes, device=x.device)[
+            :num_noise_nodes
+        ]
 
         out_x = x.clone()
         out_x[token_nodes] = 0.0
@@ -226,7 +244,9 @@ class PreModel(nn.Module):
 
     def mask_attr_restoration(self, feat, gs, epoch):
         cur_feat_mask_rate = self.get_mask_rate(self.feat_mask_rate, epoch=epoch)
-        use_x, (mask_nodes, keep_nodes) = self.encoding_mask_noise(feat, cur_feat_mask_rate)
+        use_x, (mask_nodes, keep_nodes) = self.encoding_mask_noise(
+            feat, cur_feat_mask_rate
+        )
 
         enc_out, _ = self.encoder(gs, use_x, return_hidden=False)
 
@@ -276,7 +296,7 @@ class PreModel(nn.Module):
 
     def get_embeds(self, feats, mps, *varg):
         if self.use_mp2vec_feat_pred:
-            origin_feat = feats[0][:, :self.focused_feature_dim]
+            origin_feat = feats[0][:, : self.focused_feature_dim]
         else:
             origin_feat = feats[0]
         gs = self.mps_to_gs(mps)
@@ -303,8 +323,24 @@ class PreModel(nn.Module):
             return self.__cache_gs
 
 
-def setup_module(m_type, num_metapath, enc_dec, in_dim, num_hidden, out_dim, num_layers, dropout, activation, residual,
-                 norm, nhead, nhead_out, attn_drop, negative_slope=0.2, concat_out=True) -> nn.Module:
+def setup_module(
+    m_type,
+    num_metapath,
+    enc_dec,
+    in_dim,
+    num_hidden,
+    out_dim,
+    num_layers,
+    dropout,
+    activation,
+    residual,
+    norm,
+    nhead,
+    nhead_out,
+    attn_drop,
+    negative_slope=0.2,
+    concat_out=True,
+) -> nn.Module:
     if m_type == "han":
         mod = HAN(
             num_metapath=num_metapath,

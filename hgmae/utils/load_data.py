@@ -4,6 +4,7 @@ import scipy.sparse as sp
 import torch as th
 from sklearn.preprocessing import OneHotEncoder
 from torch_geometric.data import HeteroData
+from torch_geometric.datasets import DBLP
 
 data_folder = "data/"
 
@@ -103,8 +104,8 @@ def load_acm(ratio, type_num):
 
 def load_dblp(ratio, type_num):
     # The order of node types: 0 a 1 p 2 c 3 t
-    path = data_folder + "dblp/"
-    label = np.load(path + "labels.npy").astype('int32')
+    path = data_folder + "dblp/" 
+    label = np.load(path + "labels.npy").astype('int32') 
     label = encode_onehot(label)
     nei_p = np.load(path + "nei_p.npy", allow_pickle=True)
     feat_a = sp.load_npz(path + "a_feat.npz").astype("float32")
@@ -117,14 +118,14 @@ def load_dblp(ratio, type_num):
     test = [np.load(path + "test_" + str(i) + ".npy") for i in ratio]
     val = [np.load(path + "val_" + str(i) + ".npy") for i in ratio]
 
-    label = th.FloatTensor(label)
-    nei_p = [th.LongTensor(i) for i in nei_p]
-    feat_p = th.FloatTensor(preprocess_features(feat_p))
-    feat_a = th.FloatTensor(preprocess_features(feat_a))
-    apa = sparse_mx_to_torch_sparse_tensor(normalize_adj(apa))
-    apcpa = sparse_mx_to_torch_sparse_tensor(normalize_adj(apcpa))
-    aptpa = sparse_mx_to_torch_sparse_tensor(normalize_adj(aptpa))
-    pos = sparse_mx_to_torch_sparse_tensor(pos)
+    label = th.FloatTensor(label) # label for authors, 4 types
+    nei_p = [th.LongTensor(i) for i in nei_p] # author -> paper
+    feat_p = th.FloatTensor(preprocess_features(feat_p)) # features for papers, one hot encoding
+    feat_a = th.FloatTensor(preprocess_features(feat_a)) # features for authors
+    apa = sparse_mx_to_torch_sparse_tensor(normalize_adj(apa)) # metapath adjacency matrix
+    apcpa = sparse_mx_to_torch_sparse_tensor(normalize_adj(apcpa)) # metapath adjacency matrix
+    aptpa = sparse_mx_to_torch_sparse_tensor(normalize_adj(aptpa)) # metapath adjacency matrix
+    pos = sparse_mx_to_torch_sparse_tensor(pos) # TODO: ?
     train = [th.LongTensor(i) for i in train]
     val = [th.LongTensor(i) for i in val]
     test = [th.LongTensor(i) for i in test]
@@ -204,6 +205,7 @@ def load_freebase(ratio, type_num):
 
 
 def load_data(dataset, ratio, type_num):
+    # ratio [20,40,60] is proportions or training test and validation data
     if dataset == "acm":
         data = load_acm(ratio, type_num)
     elif dataset == "dblp":
