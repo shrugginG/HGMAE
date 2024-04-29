@@ -11,13 +11,17 @@ from sklearn.metrics.cluster import normalized_mutual_info_score, adjusted_rand_
 
 
 def evaluate_cluster(embeds, y, n_labels, kmeans_random_state):
-    Y_pred = KMeans(n_labels, random_state=kmeans_random_state).fit(embeds).predict(embeds)
+    Y_pred = (
+        KMeans(n_labels, random_state=kmeans_random_state).fit(embeds).predict(embeds)
+    )
     nmi = normalized_mutual_info_score(y, Y_pred)
     ari = adjusted_rand_score(y, Y_pred)
     return nmi, ari
 
 
-def evaluate(embeds, idx_train, idx_val, idx_test, label, nb_classes, device, lr, wd, isTest=True):
+def evaluate(
+    embeds, idx_train, idx_val, idx_test, label, nb_classes, device, lr, wd, isTest=True
+):
     hid_units = embeds.shape[1]
     xent = nn.CrossEntropyLoss()
 
@@ -63,8 +67,8 @@ def evaluate(embeds, idx_train, idx_val, idx_test, label, nb_classes, device, lr
             preds = torch.argmax(logits, dim=1)
 
             val_acc = torch.sum(preds == val_lbls).float() / val_lbls.shape[0]
-            val_f1_macro = f1_score(val_lbls.cpu(), preds.cpu(), average='macro')
-            val_f1_micro = f1_score(val_lbls.cpu(), preds.cpu(), average='micro')
+            val_f1_macro = f1_score(val_lbls.cpu(), preds.cpu(), average="macro")
+            val_f1_micro = f1_score(val_lbls.cpu(), preds.cpu(), average="micro")
 
             val_accs.append(val_acc.item())
             val_macro_f1s.append(val_f1_macro)
@@ -75,8 +79,8 @@ def evaluate(embeds, idx_train, idx_val, idx_test, label, nb_classes, device, lr
             preds = torch.argmax(logits, dim=1)
 
             test_acc = torch.sum(preds == test_lbls).float() / test_lbls.shape[0]
-            test_f1_macro = f1_score(test_lbls.cpu(), preds.cpu(), average='macro')
-            test_f1_micro = f1_score(test_lbls.cpu(), preds.cpu(), average='micro')
+            test_f1_macro = f1_score(test_lbls.cpu(), preds.cpu(), average="macro")
+            test_f1_micro = f1_score(test_lbls.cpu(), preds.cpu(), average="micro")
 
             test_accs.append(test_acc.item())
             test_macro_f1s.append(test_f1_macro)
@@ -95,22 +99,35 @@ def evaluate(embeds, idx_train, idx_val, idx_test, label, nb_classes, device, lr
         # auc
         best_logits = logits_list[max_iter]
         best_proba = softmax(best_logits, dim=1)
-        auc_score = roc_auc_score(y_true=test_lbls.detach().cpu().numpy(),
-                                  y_score=best_proba.detach().cpu().numpy(),
-                                  multi_class='ovr'
-                                  )
+
+        y_true = test_lbls.detach().cpu().numpy()
+        # NOTE - For binary classification, we only need the probability of the positive class
+        if nb_classes <= 2:
+            y_score = best_proba[:, 1].detach().cpu().numpy()
+            auc_score = roc_auc_score(
+                y_true=y_true,
+                y_score=y_score,
+            )
+        else:
+            y_score = best_proba.detach().cpu().numpy()
+            auc_score = roc_auc_score(
+                y_true=y_true,
+                y_score=y_score,
+                multi_class="ovr",
+            )
         auc_score_list.append(auc_score)
 
     if isTest:
-        print("\t[Classification] Macro-F1: [{:.4f}, {:.4f}]  Micro-F1: [{:.4f}, {:.4f}]  auc: [{:.4f}, {:.4f}]"
-              .format(np.mean(macro_f1s),
-                      np.std(macro_f1s),
-                      np.mean(micro_f1s),
-                      np.std(micro_f1s),
-                      np.mean(auc_score_list),
-                      np.std(auc_score_list)
-                      )
-              )
+        print(
+            "\t[Classification] Macro-F1: [{:.4f}, {:.4f}]  Micro-F1: [{:.4f}, {:.4f}]  auc: [{:.4f}, {:.4f}]".format(
+                np.mean(macro_f1s),
+                np.std(macro_f1s),
+                np.mean(micro_f1s),
+                np.std(micro_f1s),
+                np.mean(auc_score_list),
+                np.std(auc_score_list),
+            )
+        )
         return np.mean(macro_f1s), np.mean(micro_f1s), np.mean(auc_score_list)
     else:
         return np.mean(macro_f1s_val), np.mean(macro_f1s)
