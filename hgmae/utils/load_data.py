@@ -241,7 +241,8 @@ def load_phishing(ratio, type_num):
     label = encode_onehot(label)
     nei_f = np.load(path + "nei_f.npy", allow_pickle=True)
     # feat_u = sp.load_npz(path + "u_feat.npz").astype("float32")
-    feat_u = sp.eye(type_num[0])  # TODO - Wair for proper feat
+    # feat_u = sp.eye(type_num[0])  # TODO - Wair for proper feat
+    feat_u = np.load(path + "u_feat.npy").astype("float32")
     feat_f = sp.eye(type_num[1])
     ufu = sp.load_npz(path + "ufu.npz")
     ufrfu = sp.load_npz(path + "ufrfu.npz")
@@ -252,7 +253,8 @@ def load_phishing(ratio, type_num):
 
     label = th.FloatTensor(label)
     nei_f = [th.LongTensor(i) for i in nei_f]
-    feat_u = th.FloatTensor(preprocess_features(feat_u))
+    feat_u = th.FloatTensor(feat_u)
+    # feat_u = th.FloatTensor(preprocess_features(feat_u))
     feat_f = th.FloatTensor(preprocess_features(feat_f))
     ufu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufu))
     ufrfu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufrfu))
