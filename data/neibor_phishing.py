@@ -5,9 +5,33 @@ import numpy as np
 # as numpy.array style for futher usage.
 ####################################################
 
-# This is for phishing
-fu = np.genfromtxt("/home/jxlu/project/HGMAE/data/phishing/fu.txt")
 
+# def get_nei(data_dir, target):
+#     relation = np.genfromtxt(f"{data_dir}/{target}.txt")
+#     nodes_neigh = {}
+#     for edge in relation:
+#         if int(edge[0]) not in nodes_neigh:
+#             nodes_neigh[int(edge[0])] = []
+#             nodes_neigh[int(edge[0])].append(int(edge[1]))
+#         else:
+#             nodes_neigh[int(edge[0])].append(int(edge[1]))
+
+#     keys = sorted(nodes_neigh.keys())
+
+#     nodes_neigh = [nodes_neigh[i] for i in keys]
+#     nodes_neigh = [np.array(nei) for nei in nodes_neigh]
+#     # print(nodes_neigh)
+#     print(type(nodes_neigh[0]))
+#     nodes_neigh = np.array(nodes_neigh, dtype=object)
+#     print(nodes_neigh)
+#     np.save(f"{data_dir}/nei_{target}.npy", nodes_neigh)
+    
+#     return nodes_neigh
+
+
+# This is for phishing_1000
+fu = np.genfromtxt("/home/jxlu/project/HGMAE/data/phishing_1000/fu.txt")
+print(len(fu))
 u_n = {}
 for i in fu:
     if i[1] not in u_n:
@@ -19,27 +43,16 @@ keys = sorted(u_n.keys())
 u_n = [u_n[i] for i in keys]
 u_n = [np.array(nei) for nei in u_n]
 u_n = np.array(u_n, dtype="object")
-np.save("/home/jxlu/project/HGMAE/data/phishing/nei_f.npy", u_n)
+np.save("/home/jxlu/project/HGMAE/data/phishing_1000/nei_f.npy", u_n)
 
 # give some basic statistics about neighbors
 l = [len(i) for i in u_n]
 print(max(l), min(l), np.mean(l))
 
-# # This is for ACM, Freebase, AMiner
-# pa = np.genfromtxt("./aminer/pa.txt")
-# p_n = {}
-# for i in pa:
-#     if i[0] not in p_n:
-#         p_n[int(i[0])] = []
-#         p_n[int(i[0])].append(int(i[1]))
-#     else:
-#         p_n[int(i[0])].append(int(i[1]))
-
-# keys = sorted(p_n.keys())
-# p_n = [p_n[i] for i in keys]
-# p_n = np.array([np.array(i) for i in p_n])
-# np.save("nei_a.npy", p_n)
-
-# # give some basic statistics about neighbors
-# l = [len(i) for i in p_n]
-# print(max(l), min(l), np.mean(l))
+# if __name__ == "__main__":
+#     data_dir = "/home/jxlu/project/HGMAE/data/phishing"
+#     targets = ["fu", "fr"]
+#     for target in targets:
+#         nei = get_nei(data_dir, target)
+#         l = [len(i) for i in nei]
+#         print(max(l), min(l), np.mean(l))

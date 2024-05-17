@@ -40,6 +40,15 @@ def main(args):
         g,
         processed_metapaths,
     ) = load_data(args.dataset, args.ratio, args.type_num)
+    # processed_metapaths = [
+    #     # [
+    #     #     ("dst_0", "<--relation_0", "target"),
+    #     #     ("target", "relation_1-->", "dst_1"),
+    #     #     ("dst_1", "<--relation_1", "target"),
+    #     #     ("target", "relation_0-->", "dst_0"),
+    #     # ],
+    #     ("dst_0", "<--relation_0", "target"), ("target", "relation_0-->", "dst_0"),
+    # ]
     nb_classes = label.shape[-1]
     feats_dim_list = [i.shape[1] for i in feats]
 
@@ -60,7 +69,9 @@ def main(args):
             sparse=True,
         )
         metapath2vec_train(args, metapath_model, args.mps_epoch, args.device)
+
         mp2vec_feat = metapath_model("target").detach()
+        # mp2vec_feat = metapath_model("dst_0").detach()
 
         # free up memory
         del metapath_model
@@ -141,7 +152,7 @@ def main(args):
                 args.eva_lr,
                 args.eva_wd,
             )
-            macro_score_list.append(macro_score)
+            # macro_score_list.append(macro_score)
             micro_score_list.append(micro_score)
             auc_score_list.append(auc_score)
     elif args.task == "clustering":

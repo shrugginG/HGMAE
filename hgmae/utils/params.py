@@ -26,6 +26,11 @@ datasets_args = {
         "nei_num": 1,
         "n_labels": 3,
     },
+    "phishing_1000": {
+        "type_num": [1987, 7566, 2838],
+        "nei_num": 1,
+        "n_labels": 3,
+    },
 }
 
 

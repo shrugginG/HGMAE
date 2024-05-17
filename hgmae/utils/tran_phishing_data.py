@@ -23,6 +23,7 @@ def trans_labels(data_dir, export_dir):
     np.save(label_npy_file, label_array)
 
 
+# NOTE - Deprecated, please use data/neibor_phishing.py instead
 def generate_nei_f(data_dir, export_dir):
     nei_f = [[] for _ in range(1018)]
     with open(f"{data_dir}/url_fqdn_relation_edges.csv") as f:
@@ -102,17 +103,21 @@ def export_fqdn_ip_edge_to_txt(data_dir, export_dir):
 
 
 # Divide the data into training, testing andvalidation sets
-def divide_datasets(data_dir, export_dir, ratio=[20, 40, 60]):
+def divide_datasets(data_dir, export_dir, ratio=[20, 40, 60], scale=0):
     with open(f"{data_dir}/url_nodes.csv") as f:
         url_nodes = pd.read_csv(f)
         url_nodes["url_id"] = url_nodes["url_id"] - 1
-    benign_start_index = 0
-    benign_end_index = 499
-    phishy_start_index = 500
-    phishy_end_index = 1017
-    for num in ratio:
 
-        all_nodes = list(range(1018))
+    benign_start_index = 0
+    for node in url_nodes.iterrows():
+        if node[1]["category"] == "phishy":
+            benign_end_index = node[1]["url_id"] - 1
+            break
+    phishy_start_index = benign_end_index + 1
+    phishy_end_index = url_nodes.iloc[-1]["url_id"]
+
+    for num in ratio:
+        all_nodes = list(range(phishy_end_index + 1))
 
         benign_random_index = random.sample(
             range(benign_start_index, benign_end_index + 1), num
@@ -123,10 +128,10 @@ def divide_datasets(data_dir, export_dir, ratio=[20, 40, 60]):
         random_index = sorted(benign_random_index + phishy_random_index)
 
         remain_nodes = [node for node in all_nodes if node not in random_index]
-        test_index = random.sample(remain_nodes, 400)
+        test_index = random.sample(remain_nodes, int((scale * 2 - 200) / 2))
 
         remain_nodes = [node for node in remain_nodes if node not in test_index]
-        val_index = random.sample(remain_nodes, 400)
+        val_index = random.sample(remain_nodes, int((scale * 2 - 200) / 2))
 
         random_index = np.array(random_index, dtype="int64")
         np.save(f"{export_dir}/train_{num}.npy", random_index)
@@ -138,13 +143,17 @@ def divide_datasets(data_dir, export_dir, ratio=[20, 40, 60]):
 
 if __name__ == "__main__":
 
-    data_dir = "/home/jxlu/project/HGMAE/data/neo4j_mysql_export"
-    export_dir = "/home/jxlu/project/HGMAE/data/phishing"
+    data_dir = "/home/jxlu/project/HGMAE/data/neo4j_mysql_export_1000"
+    export_dir = "/home/jxlu/project/HGMAE/data/phishing_1000"
 
-    # trans_labels(data_dir, export_dir)
+    trans_labels(data_dir, export_dir)
 
     # generate_nei_f(data_dir, export_dir)
 
-    # export_fqdn_ip_edge_to_txt(data_dir, export_dir)
+    export_url_fqdn_edge_to_txt(data_dir, export_dir)
 
-    divide_datasets(data_dir, export_dir)
+    export_fqdn_registered_domain_edge_to_txt(data_dir, export_dir)
+
+    export_fqdn_ip_edge_to_txt(data_dir, export_dir)
+
+    divide_datasets(data_dir, export_dir, scale=1000)

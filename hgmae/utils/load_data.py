@@ -72,6 +72,30 @@ def process_data_in_pyg(neigs):
     return g, metapaths
 
 
+def process_phishing_data_in_pyg(neigs):
+    d = defaultdict(dict)
+    metapaths = []
+    for mp_i, nei1 in enumerate(neigs):
+        dst_array_concat = np.concatenate(nei1)
+        src_array_concat = []
+        for src_id, dst_array in enumerate(nei1):
+            src_array_concat.extend([src_id] * len(dst_array))
+        src_array_concat = np.array(src_array_concat)
+        src_name = f"target"
+        dst_name = f"dst_{mp_i}"
+        relation = f"relation_{mp_i}"
+        d[(src_name, relation + "-->", dst_name)]["edge_index"] = th.LongTensor(
+            np.vstack([src_array_concat, dst_array_concat])
+        )
+        metapaths.append((src_name, relation + "-->", dst_name))
+        d[(dst_name, "<--" + relation, src_name)]["edge_index"] = th.LongTensor(
+            np.vstack([dst_array_concat, src_array_concat])
+        )
+        metapaths.append((dst_name, "<--" + relation, src_name))
+    g = HeteroData(d)
+    return g, metapaths
+
+
 def load_acm(ratio, type_num):
     # The order of node types: 0 p 1 a 2 s
     path = data_folder + "acm/"
@@ -240,10 +264,73 @@ def load_phishing(ratio, type_num):
     label = np.load(path + "labels.npy").astype("int32")
     label = encode_onehot(label)
     nei_f = np.load(path + "nei_f.npy", allow_pickle=True)
-    # feat_u = sp.load_npz(path + "u_feat.npz").astype("float32")
+
+    # nei_fu = np.load(path + "nei_fu.npy", allow_pickle=True)
+    # nei_fr = np.load(path + "nei_fr.npy", allow_pickle=True)
+
     # feat_u = sp.eye(type_num[0])  # TODO - Wair for proper feat
     feat_u = np.load(path + "u_feat.npy").astype("float32")
     feat_f = sp.eye(type_num[1])
+
+    ufu = sp.load_npz(path + "ufu.npz")
+    ufrfu = sp.load_npz(path + "ufrfu.npz")
+
+    pos = None  # TODO - pos is not used in the code
+
+    train = [np.load(path + "train_" + str(i) + ".npy") for i in ratio]
+    test = [np.load(path + "test_" + str(i) + ".npy") for i in ratio]
+    val = [np.load(path + "val_" + str(i) + ".npy") for i in ratio]
+
+    # ----------------------------
+
+    label = th.FloatTensor(label)
+
+    nei_f = [th.LongTensor(i) for i in nei_f]
+
+    # nei_fu = [th.LongTensor(i) for i in nei_fu]
+    # # NOTE - nei_fr is special
+    # nei_fr = [
+    #     th.LongTensor(i.tolist()) if isinstance(i, np.ndarray) else th.LongTensor([i])
+    #     for i in nei_fr
+    # ]
+
+    feat_u = th.FloatTensor(feat_u)
+    # feat_u = th.FloatTensor(preprocess_features(feat_u))
+    feat_f = th.FloatTensor(preprocess_features(feat_f))
+    ufu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufu))
+    ufrfu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufrfu))
+    # pos = sparse_mx_to_torch_sparse_tensor(pos)
+    train = [th.LongTensor(i) for i in train]
+    val = [th.LongTensor(i) for i in val]
+    test = [th.LongTensor(i) for i in test]
+
+    return [nei_f], [feat_u, feat_f], [ufu, ufrfu], pos, label, train, val, test
+    # return (
+    #     [nei_fu, nei_fr],
+    #     [feat_u, feat_f],
+    #     [ufu, ufrfu],
+    #     pos,
+    #     label,
+    #     train,
+    #     val,
+    #     test,
+    # )
+
+    print(1)
+
+
+def load_phishing_1000(ratio, type_num):
+    # TODO - Completet load func
+    path = data_folder + "phishing_1000/"
+
+    label = np.load(path + "labels.npy").astype("int32")
+    label = encode_onehot(label)
+    nei_f = np.load(path + "nei_f.npy", allow_pickle=True)
+    
+    # feat_u = sp.eye(type_num[0])  # TODO - Wair for proper feat
+    feat_u = np.load(path + "u_feat.npy").astype("float32")
+    feat_f = sp.eye(type_num[1])
+    
     ufu = sp.load_npz(path + "ufu.npz")
     ufrfu = sp.load_npz(path + "ufrfu.npz")
     pos = None  # TODO - pos is not used in the code
@@ -252,10 +339,12 @@ def load_phishing(ratio, type_num):
     val = [np.load(path + "val_" + str(i) + ".npy") for i in ratio]
 
     label = th.FloatTensor(label)
+
     nei_f = [th.LongTensor(i) for i in nei_f]
     feat_u = th.FloatTensor(feat_u)
     # feat_u = th.FloatTensor(preprocess_features(feat_u))
     feat_f = th.FloatTensor(preprocess_features(feat_f))
+
     ufu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufu))
     ufrfu = sparse_mx_to_torch_sparse_tensor(normalize_adj(ufrfu))
     # pos = sparse_mx_to_torch_sparse_tensor(pos)
@@ -279,5 +368,7 @@ def load_data(dataset, ratio, type_num):
         data = load_freebase(ratio, type_num)
     elif dataset == "phishing":
         data = load_phishing(ratio, type_num)
+    elif dataset == "phishing_1000":
+        data = load_phishing_1000(ratio, type_num)
     g, metapaths = process_data_in_pyg(data[0])
     return data, g, metapaths
